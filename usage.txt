@@ -1,0 +1,23 @@
+NAME
+    TODO - Create and manage a TODO list.
+DESCRIPTION
+    TODO is a command-line tool for creating and managing a TODO list.
+    It allows you to add, remove, and display tasks in a CSV file.
+
+USAGE
+    TODO -d "Argument1 Argument2"
+    TODO -r
+    TODO -a
+
+OPTIONS
+    -a
+        Add a new task to the TODO list.
+    -r
+        Remove a task from the TODO list.
+    -d
+        Display a task from the TODO list.
+        Comes with two additional optional arguments:
+            Sort: The column of which to sort with.
+            Filter: The keyword or tag to filter by.
+        Example: TODO -d "Due Personal"
+        Unfortunately it's both arguments or nothing.
