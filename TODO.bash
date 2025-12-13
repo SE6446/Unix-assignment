@@ -82,22 +82,25 @@ display() {
         # if it is empty, we make it priority
         col_index=3 # Default to priority
     else
-        col_index=$(get_column_from_name tasks.csv "$col_index")
+        col_index=$(get_column_from_name $list.csv "$col_index")
     fi
 
     if [[ -z "$filter" ]]; then
-        print_sorted_csv tasks.csv "$col_index"
+        print_sorted_csv $list.csv "$col_index"
     else
-        print_filtered_csv tasks.csv "$col_index" "$filter"
+        print_filtered_csv $list.csv "$col_index" "$filter"
     fi
 }
 
 # Main goes in here
-
-while getopts ":dar" flag; do
+list=tasks
+while getopts ":darl:" flag; do
     case "${flag}" in
+        l)
+            list=${OPTARG:-tasks}
+            ;;
         d)
-            # To allow for Optional Arguments, we need to do a little hack.
+            # To allow for Optional Arguments, we need to do a little hacking.
             # First we use OPTIND to 'steal' the next argument.
             next_arg="${!OPTIND}"
 
