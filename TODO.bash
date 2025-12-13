@@ -92,9 +92,67 @@ display() {
     fi
 }
 
+complete() {
+    local archive="archive.csv"
+    local keyword="$1"
+    local date_col=2
+    if [ -z "$keyword" ]; then
+            echo "Error: Please provide a keyword."
+            return 1
+    fi
+
+    if [ ! -f "$list.csv" ]; then
+        echo "Error: $list.csv not found."
+        return 1
+    fi
+    # Find the line(s) containing the keyword
+    # We use 'grep' to find the line.
+    local match=$(grep -v Name,Due "$list.csv" | grep "$keyword" | head -n 1) #We don't have time to do complex searching, so we pick the first viable option
+    if [ -z "$match" ]; then
+        echo "No task found matching: '$keyword'"
+        return 1
+    fi
+
+
+    # 3. Return (Print) the line to the console
+    echo "Completed:"
+    if echo "$match" | grep -q "@repeat"; then
+        echo "Recurring task detected. Updating due date..."
+        # Extract the old date using awk
+        # We look at the specific column defined in date_col
+        # This was a nightmare to figure out
+        local old_date=$(echo "$match" | awk -F, -v col="$date_col" '{print $col}')
+        # Only works on linux. If you're using Mac, perhaps reconsider why we are making a program in bash, as opposed to... I don't know a PROGRAMMING language? (suffer)
+        if echo "$match" | grep -q "@repeatWeekly"; then
+            local new_date=$(date -d "$old_date + 7 days" +%Y-%m-%d)
+        elif echo "$match" | grep -q "@repeatDaily"; then
+            local new_date=$(date -d "$old_date + 1 day" +%Y-%m-%d)
+        elif echo "$match" | grep -q "@repeatMonthly"; then
+            local new_date=$(date -d "$old_date + 30 days" +%Y-%m-%d)
+        elif echo "$match" | grep -q "@repeatYearly"; then
+            local new_date=$(date -d "$old_date + 1 year" +%Y-%m-%d)
+        fi
+        echo "   Old Date: $old_date"
+        echo "   New Date: $new_date"
+        # Update the file using awk
+        # We create a temp file where we swap the date ONLY for the matching line
+        # This damn well is going to cause me to use one of my free counselling sessions at the uni counseller. Yes, this was AI assisted, after 1 hour of crying to myself.
+        awk -F, -v key="$keyword" -v dcol="$date_col" -v ndate="$new_date" \
+        'BEGIN {OFS=","}
+         $0 ~ key { $dcol = ndate; print $0; next }
+         { print $0 }' "$list.csv" > "$list.tmp" && mv "$list.tmp" "$list.csv"
+    else
+        # Not repeating? Archive and delete it.
+        echo "$match" >> "$archive"
+        echo "Sent entries $match to the archive"
+        grep -v "$keyword" "$list.csv" > "$list.tmp" && mv "$list.tmp" "$list.csv"
+        echo "Removed from list."
+    fi
+}
+
 # Main goes in here
 list=tasks
-while getopts ":darl:" flag; do
+while getopts ":darc:l:" flag; do
     case "${flag}" in
         l)
             list=${OPTARG:-tasks}
@@ -127,6 +185,10 @@ while getopts ":darl:" flag; do
             ;;
         r)
             echo "Removing Not implemented"
+            exit 0
+            ;;
+        c)
+            complete $OPTARG
             exit 0
             ;;
         *)
