@@ -61,3 +61,62 @@ get_column_from_name() {
 column_number=$(get_column_from_name tasks.csv Due)
 echo "Sorting by column number: $column_number"
 print_sorted_csv tasks.csv $column_number
+
+
+value_comma_check() {
+    if [["$1" == *","*]]; then
+        echo "Values may not contain commas: '$1'" >&2
+        return 1
+    fi
+}
+
+write_csv() {
+    local name="$1"
+    local due="$2"
+    local priority="$3"
+    local tag="$4"
+    local repitition="$5"
+    
+    for value in "$name" "$due" "$priority" "$tag" "$repitition"; do
+        value_comma_check "$value" || return 1
+    done
+
+    if [[! -f "$TODO_FILE" ]]; then
+        echo "name,due,priority,tag,repitition" > "$TODO_FILE"
+    fi
+
+    echo "$name,$due,$priority,$tag,$repitition" >> "$TODO_FILE"
+}
+
+add_task() {
+    local file="tasks.csv"
+
+    local name="$1"
+    local due="$2"
+    local priority="${3:-medium}"
+    local tag="${4:-}"
+    local repitition="${5:-}"
+
+    if [[ -z "$name" ]]; then
+        echo "Usage: add_task <name> <due> <priority> <tag> <repitition>" >&2
+        return 1
+    fi
+
+    for value in "$name,$due,$priority,$tag,$repitition"; do
+      value_comma_check "$value" ||  return 1
+    done
+
+    case "$priority" in
+        low|medium|high) ;;
+        *)
+            echo "Priority must be low, medium or high" >&2
+            return 1
+            ;;
+    esac
+
+    if [[ ! -f "$file" ]]; then
+        echo "name,due,priority,tag,repitition" > "$file"
+    fi
+
+    echo "$name,$due,$priority,$tag,$repitition" >> "$file"
+}
