@@ -1,3 +1,5 @@
+TODO_DIR="lists"
+
 print_csv() {
     # Check if a file was provided and if it exists
     if [ -z "$1" ]; then
@@ -75,12 +77,13 @@ value_comma_check() {
 }
 
 write_csv() {
-    #todo list headers
-    local name="$1"
-    local due="$2"
-    local priority="$3"
-    local tag="$4"
-    local repitition="$5"
+    local file_name="$1"
+    #todo csv headers
+    local name="$2"
+    local due="$3"
+    local priority="$4"
+    local tag="$5"
+    local repitition="$6"
     
     #checks for commas in each csv column value
     for value in "$name" "$due" "$priority" "$tag" "$repitition"; do
@@ -88,20 +91,20 @@ write_csv() {
     done
 
     if [[! -f "$TODO_FILE" ]]; then
-        echo "name,due,priority,tag,repitition" > "$TODO_FILE"
+        echo "name,due,priority,tag,repitition" > "$file_name.csv"
     fi
 
-    echo "$name,$due,$priority,$tag,$repitition" >> "$TODO_FILE"
+    echo "$name,$due,$priority,$tag,$repitition" >> "$file_name.csv"
 }
 
 add_task() {
-    local file="tasks.csv" #file name is placeholder
+    local file="$1.csv"
 
-    local name="$1"
-    local due="$2"
-    local priority="${3:-medium}"
-    local tag="${4:-}"
-    local repitition="${5:-}"
+    local name="$2"
+    local due="$3"
+    local priority="${4:-medium}"
+    local tag="${5:-}"
+    local repitition="${6:-}"
 
     if [[ -z "$name" ]]; then
         echo "Usage: add_task <name> <due> <priority> <tag> <repitition>" >&2
@@ -129,7 +132,7 @@ add_task() {
 
 create_list() {
     local list_name="$1"
-    local filedir="lists"
+    local file_dir="lists"
     local index_file="list_index.csv"
 
     if [[ -z "$filename" ]]; then
@@ -137,14 +140,14 @@ create_list() {
         return 1
     fi
 
-    value_comma_check "$filename" || return 1
+    value_comma_check "$list_name" || return 1
 
-    mkdir -p "$filedir"
+    mkdir -p "$file_dir"
 
-    local list_file="$filedir/$filename.csv"
+    local list_file="$file_dir/$list_name.csv"
 
     if [[ -f "$list_file" ]]; then
-        echo "List '$filename' already exists." >&2
+        echo "List '$list_name' already exists." >&2
         return 1
     fi
 
