@@ -67,6 +67,7 @@ print_sorted_csv tasks.csv $column_number
 
 
 value_comma_check() {
+    #checks for commas inside of csv values, returns error if so
     if [["$1" == *","*]]; then
         echo "Values may not contain commas: '$1'" >&2
         return 1
@@ -74,12 +75,14 @@ value_comma_check() {
 }
 
 write_csv() {
+    #todo list headers
     local name="$1"
     local due="$2"
     local priority="$3"
     local tag="$4"
     local repitition="$5"
     
+    #checks for commas in each csv column value
     for value in "$name" "$due" "$priority" "$tag" "$repitition"; do
         value_comma_check "$value" || return 1
     done
@@ -92,7 +95,7 @@ write_csv() {
 }
 
 add_task() {
-    local file="tasks.csv"
+    local file="tasks.csv" #file name is placeholder
 
     local name="$1"
     local due="$2"
@@ -122,4 +125,39 @@ add_task() {
     fi
 
     echo "$name,$due,$priority,$tag,$repitition" >> "$file"
+}
+
+create_list() {
+    local list_name="$1"
+    local filedir="lists"
+    local index_file="list_index.csv"
+
+    if [[ -z "$filename" ]]; then
+        echo "Usage: create_list <list name>" >&2
+        return 1
+    fi
+
+    value_comma_check "$filename" || return 1
+
+    mkdir -p "$filedir"
+
+    local list_file="$filedir/$filename.csv"
+
+    if [[ -f "$list_file" ]]; then
+        echo "List '$filename' already exists." >&2
+        return 1
+    fi
+
+    echo "name,due,priority,tag,repitition" > "$list_file"
+
+    if [[ ! -f "$index_file "]]; then
+        echo "list__name,file_path,created" > "$index_file"
+    fi
+
+    local created
+    created="$(date +%f)
+
+    echo "$list_name,$list_file,$created" >> "$index_file"
+
+    echo "List Created: $list_name"
 }
