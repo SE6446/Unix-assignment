@@ -147,8 +147,8 @@ complete() {
     fi
     # Find the line(s) containing the keyword
     # We use 'grep' to find the line.
-    local matches=$(grep -v Name,Due "$list.csv" | grep "$keyword") #We don't have time to do complex searching, so we pick the first viable option
-    if [ -z "$matches" ]; then
+    local match=$(grep -v Name,Due "$list.csv" | grep "$keyword") #We don't have time to do complex searching, so we pick the first viable option
+    if [ -z "$match" ]; then
         echo "No tasks found matching: '$keyword'"
         return 1
     fi
@@ -180,6 +180,7 @@ complete() {
          # What? You wanted a more refined search? Should've thought about using a programming language, as opposed to a scripting lanuage mean't for installing software and automating command line functions!
     else
         # Not repeating? Archive and delete it.
+        echo "$match"
         echo "$match" >> "$archive"
         echo "Sent entries $match to the archive"
         grep -v "$keyword" "$list.csv" > "$list.tmp" && mv "$list.tmp" "$list.csv"
@@ -248,11 +249,11 @@ create_list() {
 # Main goes in here
 list=tasks
 # Check if the default list exists
-if [[ ! -f "$list.csv" ]]; then
+if ! [[ -f "$list.csv" ]]; then
     echo "Name,Due,Priority,Tag,Repitition" > "$list.csv"
 fi
 #Then check if the archive list exists
-if [[ ! -f "archive.csv" ]]; then
+if ! [[  -f "archive.csv" ]]; then
     echo "Name,Due,Priority,Tag,Repitition" > "archive.csv"
 fi
 while getopts ":dar:c:l:n:" flag; do
