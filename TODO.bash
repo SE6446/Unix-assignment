@@ -249,19 +249,11 @@ create_list() {
 # Main goes in here
 list=tasks
 # Check if the default list exists
-<<<<<<< HEAD
 if ! [[ -f "$list.csv" ]]; then
     echo "Name,Due,Priority,Tag,Repitition" > "$list.csv"
 fi
 #Then check if the archive list exists
 if ! [[  -f "archive.csv" ]]; then
-=======
-if [[ ! -f "$list.csv" ]]; then
-    echo "Name,Due,Priority,Tag,Repitition" > "$list.csv"
-fi
-#Then check if the archive list exists
-if [[ ! -f "archive.csv" ]]; then
->>>>>>> 9dbeb229542b38822815e982a14159f515bef4f1
     echo "Name,Due,Priority,Tag,Repitition" > "archive.csv"
 fi
 while getopts ":dar:c:l:n:" flag; do
