@@ -66,13 +66,53 @@ print_filtered_csv() {
         echo "Usage: print_filtered_csv <filename> <column_number>"
         return 1
     fi
-
-
-
     (
         head -n 1 "$file"
+
         tail -n +2 "$file" | sort -t, -k"${col}" # The data itself
     ) | column -s, -t -o " | " | grep -e "$filter" -e "Name"
+
+
+}
+
+write_csv() {
+    #todo csv headers
+    local name="$1"
+    local due="$2"
+    local priority="$3"
+    local tag="$4"
+    local repitition="$5"
+    name=${name//_/ }
+    if ! [[ $(date -d "${due//-/\/}" 2> /dev/null) ]]; then
+        echo "Error: Invalid date."
+        return 1
+    else
+        # convert to YYYY-MM-DD
+        due=$(date -d "$due" +%Y-%m-%d)
+    fi
+
+    if [[ -z "$repitition" ]]; then
+        repitition="none"
+    elif [[ "$repitition" != "none" && "$repitition" != "d" && "$repitition" != "w" && "$repitition" != "m" && "$repitition" != "y" ]]; then
+        echo "Error: Invalid repetition."
+        return 1
+    fi
+
+    if [[ "$repitition" == "d" ]]; then
+        repitition="@repeatDaily"
+    elif [[ "$repitition" == "w" ]]; then
+        repitition="@repeatWeekly"
+    elif [[ "$repitition" == "m" ]]; then
+        repitition="@repeatMonthly"
+    elif [[ "$repitition" == "y" ]]; then
+        repitition="@repeatYearly"
+    fi
+
+    if ! [[ -f "$list.csv" ]]; then
+        echo "Name,Due,Priority,Tag,Repitition" > "$list.csv"
+    fi
+
+    echo "$name,$due,$priority,$tag,$repitition" >> "$list.csv"
 }
 
 display() {
@@ -97,7 +137,7 @@ complete() {
     local keyword="$1"
     local date_col=2
     if [ -z "$keyword" ]; then
-            echo "Error: Please provide a keyword."
+            echo "Usage: TODO -c <keyword>"
             return 1
     fi
 
@@ -107,15 +147,12 @@ complete() {
     fi
     # Find the line(s) containing the keyword
     # We use 'grep' to find the line.
-    local match=$(grep -v Name,Due "$list.csv" | grep "$keyword" | head -n 1) #We don't have time to do complex searching, so we pick the first viable option
-    if [ -z "$match" ]; then
-        echo "No task found matching: '$keyword'"
+    local matches=$(grep -v Name,Due "$list.csv" | grep "$keyword") #We don't have time to do complex searching, so we pick the first viable option
+    if [ -z "$matches" ]; then
+        echo "No tasks found matching: '$keyword'"
         return 1
     fi
 
-
-    # 3. Return (Print) the line to the console
-    echo "Completed:"
     if echo "$match" | grep -q "@repeat"; then
         echo "Recurring task detected. Updating due date..."
         # Extract the old date using awk
@@ -136,11 +173,11 @@ complete() {
         echo "   New Date: $new_date"
         # Update the file using awk
         # We create a temp file where we swap the date ONLY for the matching line
-        # This damn well is going to cause me to use one of my free counselling sessions at the uni counseller. Yes, this was AI assisted, after 1 hour of crying to myself.
         awk -F, -v key="$keyword" -v dcol="$date_col" -v ndate="$new_date" \
         'BEGIN {OFS=","}
          $0 ~ key { $dcol = ndate; print $0; next }
          { print $0 }' "$list.csv" > "$list.tmp" && mv "$list.tmp" "$list.csv"
+         # What? You wanted a more refined search? Should've thought about using a programming language, as opposed to a scripting lanuage mean't for installing software and automating command line functions!
     else
         # Not repeating? Archive and delete it.
         echo "$match" >> "$archive"
@@ -150,9 +187,75 @@ complete() {
     fi
 }
 
+remove_task() {
+    local file="$1"
+    local task_num=$(($2))
+
+    if [[ -z "$file" || -z "$task_num" ]]; then
+        echo "Usage: TODO -r <task number>"
+        return 1
+    fi
+
+    if [[ ! -f "$file" ]]; then
+        echo "File not found: '$file'"
+        return 1
+    fi
+
+    if ! [[ $task_num =~ ^[0-9]+$ ]] || [[ $task_num -le 0 ]]; then
+        echo "Task number must be a positive integer"
+        return 1
+    fi
+
+    local delete_line=$((task_num + 1))
+
+    local total_lines
+    total_lines=$(wc -l < "$file")
+
+    if [[ $delete_line -gt $total_lines ]]; then
+        echo "Task number out of range."
+        return 1
+    fi
+
+    local tmp
+    temp=$(mktemp)
+
+    awk -v line="$delete_line" 'NR != line' "$file" > "$temp"
+    mv "$temp" "$file"
+
+    echo "Removed task: '$task_num'"
+
+}
+create_list() {
+    local list="$1"
+
+    if [[ -z "$list.csv" ]]; then
+        echo "Usage: TODO -n <list name>" >&2
+        return 1
+    fi
+
+    local list_file="$list.csv"
+
+    if [[ -f "$list_file" ]]; then
+        echo "List '$list' already exists." >&2
+        return 1
+    fi
+
+    echo "name,due,priority,tag,repitition" > "$list_file"
+
+    echo "List Created: $list"
+}
+
 # Main goes in here
 list=tasks
-while getopts ":darc:l:" flag; do
+# Check if the default list exists
+if [[ ! -f "$list.csv" ]]; then
+    echo "Name,Due,Priority,Tag,Repitition" > "$list.csv"
+fi
+#Then check if the archive list exists
+if [[ ! -f "archive.csv" ]]; then
+    echo "Name,Due,Priority,Tag,Repitition" > "archive.csv"
+fi
+while getopts ":dar:c:l:n:" flag; do
     case "${flag}" in
         l)
             list=${OPTARG:-tasks}
@@ -167,8 +270,31 @@ while getopts ":darc:l:" flag; do
                 #When we get a match, we set OPTARG to it.
                 OPTARG="$next_arg"
 
-                # IMPORTANT: We must manually tell getopts to skip the next argument (since we stole it)
-                # so it doesn't try to process the args in the next pass.
+                # Increment OPTIND by one to prevent repetition of opts.
+                OPTIND=$((OPTIND + 1))
+            else
+                # No argument found (or next was a flag like -a)
+                OPTARG=""
+            fi
+            read -r -a args <<< "$OPTARG"
+            if [[ ${#args[@]} -gt 2 ]]; then
+                echo "Usage: TODO -d <list name> <task name>" >&2
+                exit 1
+            fi
+            display "${args[0]}" "${args[1]}"
+            exit 0
+            ;;
+        a)
+            # To allow for Optional Arguments, we need to do a little hacking.
+            # First we use OPTIND to 'steal' the next argument.
+            next_arg="${!OPTIND}"
+
+            #Then we check if the next argument exists and isn't flagged.
+            if [[ -n "$next_arg" && "$next_arg" != -* ]]; then
+                #When we get a match, we set OPTARG to it.
+                OPTARG="$next_arg"
+
+                # Increment OPTIND by one to prevent repetition of opts.
                 OPTIND=$((OPTIND + 1))
             else
                 # No argument found (or next was a flag like -a)
@@ -176,19 +302,24 @@ while getopts ":darc:l:" flag; do
             fi
 
             read -r -a args <<< "$OPTARG"
-            display "${args[0]}" "${args[1]}"
-            exit 0
-            ;;
-        a)
-            echo "Adding Not implemented"
+            if [[ ${#args[@]} -ne 5 ]]
+            then
+                echo "Error: Invalid number of arguments. Remember for the name you should use underscores instead of spaces (they'll be added in post)"
+                exit 1
+            fi
+            write_csv "${args[0]}" "${args[1]}" "${args[2]}" "${args[3]}" "${args[4]}"
             exit 0
             ;;
         r)
-            echo "Removing Not implemented"
+            remove_task $list.csv "${OPTARG}"
             exit 0
             ;;
         c)
-            complete $OPTARG
+            complete "${OPTARG}"
+            exit 0
+            ;;
+        n)
+            create_list "${OPTARG}"
             exit 0
             ;;
         *)
@@ -198,6 +329,4 @@ while getopts ":darc:l:" flag; do
     esac
 done
 
-#Force people to READ!
-echo "Error: No arguments provided!"
 cat usage.txt

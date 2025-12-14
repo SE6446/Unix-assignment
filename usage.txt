@@ -1,19 +1,39 @@
 NAME
-    TODO - Create and manage a TODO list.
+    TODO - Create and manage TODO lists.
+
 DESCRIPTION
     TODO is a command-line tool for creating and managing a TODO list.
-    It allows you to add, remove, and display tasks in a CSV file.
+    It allows you to add, remove, and display tasks in a CSV file in the working directory.
 
 USAGE
-    TODO -d "Argument1 Argument2"
-    TODO -r
-    TODO -a
+    TODO [-l "List"] option( -d, -a, etc.) Arguments
 
 OPTIONS
+    -l
+        Specify the list to use.
+        uses any string
+        Example: TODO -l "Personal" -d "Due Social"
+
     -a
         Add a new task to the TODO list.
+        Comes with 5 mandatory arguments
+            The name of the task.
+            The due date of the task. Use a date compatible format, hyphens reccomended
+            The priority of the task. Low, Medium, High
+            The tag of the task.
+            The repeat frequency of the task.
+                d for daily
+                w for weekly
+                m for monthly
+                y for yearly
+        Example: TODO -a "Buy Groceries 2023-12-31 High Shopping d"
+
     -r
-        Remove a task from the TODO list.
+        Remove a task from the TODO list. This is a simple command
+        Argument:
+            line number, the line number of the task to remove. 0 indexed.
+        Example: TODO -r 1 #Removes first item
+
     -d
         Display a task from the TODO list.
         Comes with two additional optional arguments:
@@ -21,3 +41,13 @@ OPTIONS
             Filter: The keyword or tag to filter by.
         Example: TODO -d "Due Personal"
         Unfortunately it's both arguments or nothing.
+
+    -c
+        Mark a task as completed. If it's a repeated task, the date will be shifted.
+        Argument:
+            a keyword to mark it, please use specific things, like the full name of the task or it will perform the first task to all with the keyword.
+        Example: TODO -c "Buy Groceries"
+
+    -n
+        Create a new, empty list. Ignores -l.
+        Example: TODO -n "Christmas"
