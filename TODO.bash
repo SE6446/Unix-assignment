@@ -130,6 +130,45 @@ add_task() {
     echo "$name,$due,$priority,$tag,$repitition" >> "$file"
 }
 
+remove_task() {
+    local file="$1"
+    local task_num="$2"
+
+    if [[ -z "$file" || -z "$task_num" ]]; then
+        echo "Usage: remove_task <List Name> <Task Number>" >&2
+        return 1
+    fi
+
+    if [[ ! -f "$file" ]]; then
+        echo "File not found: '$file'" > &2
+        return 1
+    fi
+
+    if ! [["$task_num" =~ ^[0-9]+$ ]] || [["$task_num" -le 0]]; then
+        echo "Task number must be a positive integer" >&2
+        return 1
+    fi
+
+    local delete_line=$((task_num + 1))
+    
+    local total_lines
+    total_lines=$(wc -1 < "$file")
+
+    if [[delete_line -gt total_lines ]]; then
+        echo "Task number out of range."
+        return 1
+    fi
+
+    local tmp
+    temp=$(mktemp)
+
+    awk -v line="$delete_line" 'NR != line' "$file" > "$temp"
+    mv "$temp" "$file"
+
+    echo "Removed task: '$task_num'"
+
+}
+
 create_list() {
     local list_name="$1"
     local file_dir="lists"
